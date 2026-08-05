@@ -6,34 +6,40 @@
 #include<iomanip>
 #include<vector>
 using namespace std;
+namespace fs = std::filesystem;
+
 //commit1
 void init(){
-    filesystem::path repoPath = ".mygit/commits";
-                if(filesystem::exists(".mygit")){
+    fs::path repoPath = ".mygit/commits";
+                if(fs::exists(".mygit")){
                     cout<<"Repository already exists\n";
                 } else {
-                    filesystem::create_directories(repoPath);
+                    fs::create_directories(repoPath);
+                    ofstream headFile(".mygit/HEAD");
+                    headFile<<0;        
+                    headFile.close();
                     cout<<"Repository initialized\n";
                 }
 }
 
 void commit(){
-    if(!filesystem::exists(".mygit")){
+    if(!fs::exists(".mygit")){
         cout<<"Repository not initialized. Please run init first.\n";
         return;
     }
-    int commitcount=0;
-    for(auto&entry:filesystem::directory_iterator(".mygit/commits")){
-        commitcount++;
-    }
+    int commitcount;
+    ifstream headFile(".mygit/HEAD");
+    headFile>>commitcount;
+    headFile.close();
     commitcount++;
+
     string commitName = "commit" + to_string(commitcount) ;
 
-    filesystem::path commitPath=filesystem::path (".mygit/commits")/commitName;
-    filesystem::create_directory(commitPath);
+    fs::path commitPath=fs::path (".mygit/commits")/commitName;
+    fs::create_directory(commitPath);
 
-    filesystem::recursive_directory_iterator it(".");
-    filesystem::recursive_directory_iterator end;
+    fs::recursive_directory_iterator it(".");
+    fs::recursive_directory_iterator end;
 
     while(it!=end){
         //copying files and directories to the commit directory
@@ -42,12 +48,12 @@ void commit(){
             ++it;
             continue;
         }
-        filesystem::path relativePath=filesystem::relative(it->path(), ".");
-        filesystem::path destinationPath=commitPath/relativePath;
-        if(filesystem::is_directory(it->path())){
-            filesystem::create_directories(destinationPath);
-        }else if(filesystem::is_regular_file(it->path())){
-            filesystem::copy_file(it->path(), destinationPath);
+        fs::path relativePath=fs::relative(it->path(), ".");
+        fs::path destinationPath=commitPath/relativePath;
+        if(fs::is_directory(it->path())){
+            fs::create_directories(destinationPath);
+        }else if(fs::is_regular_file(it->path())){
+            fs::copy_file(it->path(), destinationPath);
         }
         ++it;
     }
@@ -76,17 +82,22 @@ void commit(){
 
         cout<<"Commit created succesfully:"
             <<commitName<< '\n';
+
+    //updating the HEAD file with the new commit count
+    ofstream headFileout(".mygit/HEAD");
+    headFileout<<commitcount;
+    headFileout.close();
 }
 
 void Log(){
     //checking if repo is initialized
-    if(!filesystem::exists(".mygit")){
+    if(!fs::exists(".mygit")){
         cout<<"Repository not initialized, please run the init first\n";
         return;
     }
     //Repo exists but no commits found
-    if(!filesystem::exists(".mygit/log.txt")){
-        cout<<"No commits found, please run the init first\n";
+    if(!fs::exists(".mygit/log.txt")){
+        cout<<"No commits found, please create a commit first\n";
         return;
     }
     //opening the log file
@@ -105,7 +116,7 @@ void Log(){
 }
 
 void revert(){
-    if(!filesystem::exists(".mygit")){
+    if(!fs::exists(".mygit")){
     cout << "Repository not initialized.\n";
     return;
     }
@@ -115,29 +126,29 @@ void revert(){
 
     string commitName="commit"+to_string(commitNumber);
 
-    filesystem::path commitPath=filesystem::path(".mygit/commits")/commitName;
+    fs::path commitPath=fs::path(".mygit/commits")/commitName;
 
-    if(!filesystem::exists(commitPath)){
+    if(!fs::exists(commitPath)){
     cout << "Commit does not exist.\n";
     return;
     }
-    for(const auto&entry: filesystem::recursive_directory_iterator(commitPath)){
+    for(const auto&entry: fs::recursive_directory_iterator(commitPath)){
         //get path relative to commit folder
-        filesystem::path relativePath =
-            filesystem::relative(entry.path(), commitPath);
+        fs::path relativePath =
+            fs::relative(entry.path(), commitPath);
         //where this file/folder belongs in the working directory
-        filesystem::path destinationPath =
-            filesystem::path(".") / relativePath;
+        fs::path destinationPath =
+            fs::path(".") / relativePath;
         //recreating directories
         if(entry.is_directory()){
-            filesystem::create_directories(destinationPath);
+            fs::create_directories(destinationPath);
         }
         //restoring files
         else if(entry.is_regular_file()){
-            filesystem::copy_file(
+            fs::copy_file(
                 entry.path(),
                 destinationPath,
-                filesystem::copy_options::overwrite_existing
+                fs::copy_options::overwrite_existing
             );
     }
     }
