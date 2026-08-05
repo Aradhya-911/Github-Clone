@@ -5,6 +5,8 @@
 #include<ctime>
 #include<iomanip>
 #include<vector>
+#include"commit.h"
+#include<sstream>
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -33,6 +35,9 @@ void commit(){
     headFile.close();
     commitcount++;
 
+    Commit newCommit;
+    newCommit.id = commitcount;
+
     string commitName = "commit" + to_string(commitcount) ;
 
     fs::path commitPath=fs::path (".mygit/commits")/commitName;
@@ -48,6 +53,10 @@ void commit(){
             ++it;
             continue;
         }
+        if(it->path().filename() == "main.exe"){
+            ++it;
+            continue;
+        }
         fs::path relativePath=fs::relative(it->path(), ".");
         fs::path destinationPath=commitPath/relativePath;
         if(fs::is_directory(it->path())){
@@ -58,10 +67,9 @@ void commit(){
         ++it;
     }
     //Creating a log file for the commit
-    string message;
     cout<<"Enter commit message: ";
     cin.ignore();
-    getline(cin, message);
+    getline(cin, newCommit.message);
 
     //getting current date and time
     auto now = std::chrono::system_clock::now();
@@ -69,18 +77,24 @@ void commit(){
     time_t currentTime=chrono::system_clock::to_time_t(now);
     tm* localTime=localtime(&currentTime);
 
+    // Convert formatted time into a string
+    stringstream ss;
+    ss << put_time(localTime, "%d-%m-%Y %H:%M:%S");
+
+    newCommit.timestamp = ss.str();
+
     //opening log in append mode, file will be created if it doesn't exist
     ofstream LogFile(".mygit/log.txt", ios::app);
 
     LogFile
-        << commitName << "|"
-        << message << "|"
-        << put_time(localTime, "%d-%m-%Y %H:%M:%S")
+        << "commit " << newCommit.id << "|"
+        << newCommit.message << "|"
+        << newCommit.timestamp
         <<'\n';
 
         LogFile.close();
 
-        cout<<"Commit created succesfully:"
+        cout<<"Commit created succesfully: "
             <<commitName<< '\n';
 
     //updating the HEAD file with the new commit count
